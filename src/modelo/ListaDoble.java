@@ -1,107 +1,104 @@
 package modelo;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ListaDoble {
 
-	// CLASE INTERNA NODO
-	private static class Nodo {
-		Object dato;
-		Nodo siguiente;
-		Nodo anterior;
+    private Nodo cabeza;   // PRIMER ELEMENTO
+    private Nodo cola;     // ULTIMO ELEMENTO
 
-		Nodo(Object d) {
-			dato = d;
-			siguiente = null;
-			anterior = null;
-		}
-	}
+    public ListaDoble() {
+        cabeza = null;
+        cola = null;
+    }
 
-	// CABEZA Y COLA DE LA LISTA
-	private Nodo cabeza;
-	private Nodo cola;
+    // INSERTA AL INICIO DE LA LISTA
+    public void insertAtHead(Object dato) {
+        Nodo nuevo = new Nodo(dato);
+        if (cabeza == null) {
+            cabeza = cola = nuevo;
+        } else {
+            nuevo.setSiguiente(cabeza);
+            cabeza.setAnterior(nuevo);
+            cabeza = nuevo;
+        }
+    }
 
-	// CONSTRUCTOR CREA LISTA VACIA
-	public ListaDoble() {
-		cabeza = null;
-		cola = null;
-	}
+    // INSERTA AL FINAL DE LA LISTA
+    public void insertAtTail(Object dato) {
+        Nodo nuevo = new Nodo(dato);
+        if (cola == null) {
+            cabeza = cola = nuevo;
+        } else {
+            cola.setSiguiente(nuevo);
+            nuevo.setAnterior(cola);
+            cola = nuevo;
+        }
+    }
 
-	// INSERTA AL INICIO 
-	public void insertAtHead(Object dato) {
-		Nodo nuevo = new Nodo(dato);
-		if (cabeza == null) {
-			cabeza = cola = nuevo;
-		} else {
-			nuevo.siguiente = cabeza;
-			cabeza.anterior = nuevo;
-			cabeza = nuevo;
-		}
-	}
+    // ELIMINA LA PRIMERA COINCIDENCIA DEL ELEMENTO
+    public void delete(Object dato) {
+        Nodo actual = cabeza;
 
-	// INSERTA AL FINAL - ASI LA LISTA MUESTRA EN ORDEN DE REGISTRO
-	public void insertAtTail(Object dato) {
-		Nodo nuevo = new Nodo(dato);
-		if (cola == null) { // LISTA VACIA
-			cabeza = cola = nuevo;
-		} else {
-			cola.siguiente = nuevo;
-			nuevo.anterior = cola;
-			cola = nuevo;
-		}
-	}
+        while (actual != null) {
+            if (actual.getElemento().equals(dato)) {
 
-	// ELIMINA LA PRIMERA OCURRENCIA DEL DATO
-	public void delete(Object dato) {
-		Nodo actual = cabeza;
-		while (actual != null) {
-			if (actual.dato.equals(dato)) {
-				if (actual == cabeza) {
-					cabeza = actual.siguiente;
-					if (cabeza != null)
-						cabeza.anterior = null;
-					else
-						cola = null; // SE VACIÓ LA LISTA
-				} else if (actual == cola) {
-					cola = actual.anterior;
-					if (cola != null)
-						cola.siguiente = null;
-					else
-						cabeza = null;
-				} else {
-					actual.anterior.siguiente = actual.siguiente;
-					actual.siguiente.anterior = actual.anterior;
-				}
-				return;
-			}
-			actual = actual.siguiente;
-		}
-	}
+                // CASO 1: ES LA CABEZA
+                if (actual == cabeza) {
+                    cabeza = actual.getSiguiente();
+                    if (cabeza != null) cabeza.setAnterior(null);
+                    else cola = null; // LISTA VACIA
+                }
 
-	// MUESTRA LA LISTA 
-	public void showList() {
-		Nodo aux = cabeza;
-		if (aux == null) {
-			System.out.println("LA LISTA ESTA VACIA");
-			return;
-		}
-		while (aux != null) {
-			System.out.println(aux.dato);
-			aux = aux.siguiente;
-		}
-	}
+                // CASO 2: ES LA COLA
+                else if (actual == cola) {
+                    cola = actual.getAnterior();
+                    if (cola != null) cola.setSiguiente(null);
+                    else cabeza = null; // LISTA VACIA
+                }
 
-	// DEVUELVE TRUE SI ESTA VACIA
-	public boolean isEmpty() {
-		return cabeza == null;
-	}
+                // CASO 3: ESTA EN MEDIO
+                else {
+                    actual.getAnterior().setSiguiente(actual.getSiguiente());
+                    actual.getSiguiente().setAnterior(actual.getAnterior());
+                }
+                return;
+            }
+            actual = actual.getSiguiente();
+        }
+    }
 
-	// CONVIERTE LA LISTA PERSONALIZA EN UNA ESTANDAR PARA PODER USAR TODAS LAS FUNCIONES 
-	public java.util.List<Object> toList() {
-		java.util.List<Object> lista = new java.util.ArrayList<>();
-		Nodo actual = cabeza;
-		while (actual != null) {
-			lista.add(actual.dato);
-			actual = actual.siguiente;
-		}
-		return lista;
-	}
+    // VERIFICA SI LA LISTA ESTA VACIA
+    public boolean isEmpty() {
+        return cabeza == null;
+    }
+
+    // RETORNA LA LISTA EN FORMA DE ARRAYLIST
+    public List<Object> toList() {
+        List<Object> lista = new ArrayList<>();
+        Nodo aux = cabeza;
+
+        while (aux != null) {
+            lista.add(aux.getElemento());
+            aux = aux.getSiguiente();
+        }
+
+        return lista;
+    }
+    
+ // MUESTRA LA LISTA
+    public void showList() {
+        Nodo aux = cabeza;
+
+        if (aux == null) {
+            System.out.println("LA LISTA ESTA VACIA");
+            return;
+        }
+
+        while (aux != null) {
+            System.out.println(aux.getElemento());  
+            aux = aux.getSiguiente();               
+        }
+    }
 }

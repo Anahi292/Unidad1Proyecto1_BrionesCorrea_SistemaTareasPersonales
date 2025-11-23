@@ -1,175 +1,431 @@
 package controlador;
 
-import modelo.*;
-import vista.VistaTareass; // 🔹 CAMBIADO: antes era vista.VistaTareas
-import javax.swing.*;
+import java.util.ArrayList;
+
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
-public class ControladorTareas implements ActionListener {
+import modelo.ColaLista;
+import modelo.GestorTareas;
+import modelo.PilaLista;
+import modelo.Tarea;
+import vista.VistaTareass;
 
-	private GestorTareas gestor;
-	private VistaTareass vista;
+public class ControladorTareas {
 
-	// CONSTRUCTOR QUE RECIBE LA VISTA Y EL MODELO
-	public ControladorTareas(GestorTareas gestor, VistaTareass vista) {
-		this.gestor = gestor;
-		this.vista = vista;
-		// ASOCIA LOS BOTONES A ESTE CONTROLADOR
-		this.vista.btnAgregar.addActionListener(this);
-		this.vista.btnCompletar.addActionListener(this);
-		this.vista.btnEliminar.addActionListener(this);
-		this.vista.btnDeshacer.addActionListener(this);
+    private GestorTareas modelo;
+    private VistaTareass vista;
 
-		actualizarTablas();
-	}
+    public ControladorTareas(GestorTareas modelo, VistaTareass vista) {
+        this.modelo = modelo;
+        this.vista = vista;
 
-	@Override
-	public void actionPerformed(ActionEvent e) {
+        vista.btnAgregar.addActionListener(e -> agregar());
+        vista.btnOrdenar.addActionListener(e -> ordenarShell());
+        vista.btnCompletar.addActionListener(e -> completar());
+        vista.btnEliminar.addActionListener(e -> eliminar());
+        vista.btnDeshacer.addActionListener(e -> deshacer());
 
-		if (e.getSource() == vista.btnAgregar) {
-			agregarTarea();
+        actualizarTablas();
+    }
 
-		} else if (e.getSource() == vista.btnCompletar) {
-			completarTarea();
+    // AGREGAR
+    private void agregar() {
 
-		} else if (e.getSource() == vista.btnEliminar) {
-			eliminarTarea();
+        JTextField txtDescripcion = new JTextField();
+        JTextArea txtNotas = new JTextArea(3, 15);
+        String[] categorias = {"Trabajo", "Personal", "Estudio", "Otro"};
+        JComboBox<String> cmbCategoria = new JComboBox<>(categorias);
+        JCheckBox chkUrgente = new JCheckBox("Es urgente");
 
-		} else if (e.getSource() == vista.btnDeshacer) {
-			deshacerTarea();
-		}
-	}
+        Object[] mensaje = {
+                "Categoría:", cmbCategoria,
+                "Descripción:", txtDescripcion,
+                "Notas:", new JScrollPane(txtNotas),
+                chkUrgente
+        };
 
-	// METODO PARA AGREGAR UNA NUEVA TAREA
-	private void agregarTarea() {
-		JTextField txtDescripcion = new JTextField();
-		JTextArea txtNotas = new JTextArea(3, 15);
-		String[] categorias = { "Trabajo", "Personal", "Estudio", "Otro" };
-		JComboBox<String> cmbCategoria = new JComboBox<>(categorias);
-		JCheckBox chkUrgente = new JCheckBox("Es urgente");
+        int opcion = JOptionPane.showConfirmDialog(null, mensaje, "Agregar nueva tarea",
+                JOptionPane.OK_CANCEL_OPTION);
 
-		Object[] mensaje = { "Categoria:", cmbCategoria, "Descripcion:", txtDescripcion, "Notas:",
-				new JScrollPane(txtNotas), chkUrgente };
+        if (opcion == JOptionPane.OK_OPTION) {
 
-		int opcion = JOptionPane.showConfirmDialog(null, mensaje, "Agregar nueva tarea", JOptionPane.OK_CANCEL_OPTION);
+            String descripcion = txtDescripcion.getText().trim();
+            String categoria = cmbCategoria.getSelectedItem().toString();
+            String notas = txtNotas.getText().trim();
+            boolean urgente = chkUrgente.isSelected();
 
-		if (opcion == JOptionPane.OK_OPTION) {
-			String descripcion = txtDescripcion.getText().trim();
-			String categoria = cmbCategoria.getSelectedItem().toString();
-			String notas = txtNotas.getText().trim();
-			boolean urgente = chkUrgente.isSelected();
+            if (!descripcion.isEmpty()) {
 
-			if (!descripcion.isEmpty()) {
-				Tarea nueva = new Tarea(descripcion, categoria, notas, urgente, "Pendiente");
-				gestor.agregarTarea(nueva);
-				actualizarTablas();
-			} else {
-				JOptionPane.showMessageDialog(null, "La descripcion no puede estar vacia");
-			}
-		}
-	}
+                Tarea t = new Tarea(descripcion, categoria, notas, urgente, "Pendiente");
+                modelo.agregarTarea(t);
+                actualizarTablas();
 
-	// METODO PARA COMPLETAR UNA TAREA
-	private void completarTarea() {
-		int fila = vista.tablaPendientes.getSelectedRow();
-		int filaUrgente = vista.tablaUrgentes.getSelectedRow();
+            } else {
+                JOptionPane.showMessageDialog(null, "La descripción no puede estar vacía");
+            }
+        }
+    }
 
-		if (fila >= 0) {
-			// SE OBTIENEN TODOS LOS DATOS DE LA FILA SELECCIONADA
-			String desc = vista.tablaPendientes.getValueAt(fila, 0).toString();
-			String categoria = vista.tablaPendientes.getValueAt(fila, 1).toString();
-			String notas = vista.tablaPendientes.getValueAt(fila, 2).toString();
+    // ORDENAMIENTO
+    private void ordenarShell() {
 
-			// 🔹 CORREGIDO: AHORA SE CONSERVAN CATEGORIA Y NOTAS
-			Tarea tarea = new Tarea(desc, categoria, notas, false, "Pendiente");
-			gestor.completarTarea(tarea);
-			actualizarTablas();
+        ArrayList<Tarea> lista = new ArrayList<>();
 
-		} else if (filaUrgente >= 0) {
-			// SE OBTIENEN LOS DATOS DE LA TAREA URGENTE
-			String desc = vista.tablaUrgentes.getValueAt(filaUrgente, 0).toString();
-			String categoria = vista.tablaUrgentes.getValueAt(filaUrgente, 1).toString();
-			String notas = vista.tablaUrgentes.getValueAt(filaUrgente, 2).toString();
+        for (Object o : modelo.getTareasPendientes().toList()) {
+            lista.add((Tarea) o);
+        }
 
-			// 🔹 CORREGIDO: TAMBIEN SE PASAN CATEGORIA Y NOTAS
-			Tarea tarea = new Tarea(desc, categoria, notas, true, "Pendiente");
-			gestor.completarTarea(tarea);
-			actualizarTablas();
+        if (lista.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "No hay tareas pendientes que ordenar.");
+            return;
+        }
 
-		} else {
-			JOptionPane.showMessageDialog(null, "Selecciona una tarea para marcar como completada");
-		}
-	}
+        String[] opciones = {"Descripción", "Categoría"};
+        String criterio = (String) JOptionPane.showInputDialog(null,
+                "Ordenar por:", "ShellSort",
+                JOptionPane.QUESTION_MESSAGE, null, opciones, opciones[0]);
 
-	// METODO PARA ELIMINAR UNA TAREA
-	private void eliminarTarea() {
-		int fila = vista.tablaPendientes.getSelectedRow();
-		if (fila >= 0) {
-			String desc = vista.tablaPendientes.getValueAt(fila, 0).toString();
-			Tarea tarea = new Tarea(desc, "", "", false, "Pendiente");
-			gestor.eliminarTarea(tarea);
-			actualizarTablas();
-		} else {
-			JOptionPane.showMessageDialog(null, "Selecciona una tarea pendiente para eliminar");
-		}
-	}
+        if (criterio == null) return;
 
-	// METODO PARA DESHACER LA ULTIMA TAREA COMPLETADA
-	private void deshacerTarea() {
-		try {
-			gestor.deshacerUltimaCompletada();
-			actualizarTablas();
-		} catch (Exception e) {
-			JOptionPane.showMessageDialog(null, "No hay tareas completadas para deshacer");
-		}
-	}
+        shellSort(lista, criterio);
 
-	// METODO QUE ACTUALIZA LAS TABLAS
-	private void actualizarTablas() {
-		DefaultTableModel modeloPend = (DefaultTableModel) vista.tablaPendientes.getModel();
-		DefaultTableModel modeloUrg = (DefaultTableModel) vista.tablaUrgentes.getModel();
-		DefaultTableModel modeloComp = (DefaultTableModel) vista.tablaCompletadas.getModel();
+        DefaultTableModel modeloTabla = (DefaultTableModel) vista.tablaOrdenadas.getModel();
+        modeloTabla.setRowCount(0);
 
-		modeloPend.setRowCount(0);
-		modeloUrg.setRowCount(0);
-		modeloComp.setRowCount(0);
+        for (Tarea t : lista) {
+            modeloTabla.addRow(new Object[]{t.getDescripcion(), t.getCategoria(), t.getNotas(), t.getEstado()});
+        }
+    }
 
-		// LLENA LISTA PENDIENTE
-		for (Object obj : gestor.getTareasPendientes().toList()) {
-			Tarea t = (Tarea) obj;
-			modeloPend.addRow(new Object[] { t.getDescripcion(), t.getCategoria(), t.getNotas(), t.getEstado() });
-		}
+    private void shellSort(ArrayList<Tarea> lista, String criterio) {
 
-		// LLENA COLA URGENTE
-		try {
-			ColaLista temp = new ColaLista();
-			while (!gestor.getTareasUrgentes().colaVacia()) {
-				Tarea t = (Tarea) gestor.getTareasUrgentes().quitar();
-				modeloUrg.addRow(new Object[] { t.getDescripcion(), t.getCategoria(), t.getNotas(), t.getEstado() });
-				temp.insertar(t);
-			}
-			while (!temp.colaVacia()) {
-				gestor.getTareasUrgentes().insertar(temp.quitar());
-			}
-		} catch (Exception e) {
-			// NO HACER NADA
-		}
+        int n = lista.size();
+        for (int gap = n / 2; gap > 0; gap /= 2) {
 
-		// LLENA PILA COMPLETADAS
-		try {
-			PilaLista temp = new PilaLista();
-			while (!gestor.getTareasCompletadas().pilaVacia()) {
-				Tarea t = (Tarea) gestor.getTareasCompletadas().popPila();
-				modeloComp.addRow(new Object[] { t.getDescripcion(), t.getCategoria(), t.getNotas(), t.getEstado() });
-				temp.pushPila(t);
-			}
-			while (!temp.pilaVacia()) {
-				gestor.getTareasCompletadas().pushPila(temp.popPila());
-			}
-		} catch (Exception e) {
-			// NO HACER NADA
-		}
-	}
+            for (int i = gap; i < n; i++) {
+
+                Tarea temp = lista.get(i);
+                int j = i;
+
+                while (j >= gap &&
+                        comparar(lista.get(j - gap), temp, criterio) > 0) {
+
+                    lista.set(j, lista.get(j - gap));
+                    j -= gap;
+                }
+
+                lista.set(j, temp);
+            }
+        }
+    }
+
+    private int comparar(Tarea a, Tarea b, String criterio) {
+        if (criterio.equals("Descripción"))
+            return a.getDescripcion().compareToIgnoreCase(b.getDescripcion());
+        else
+            return a.getCategoria().compareToIgnoreCase(b.getCategoria());
+    }
+
+    // COMPLETAR
+    private void completar() {
+
+        int filaPend = vista.tablaPendientes.getSelectedRow();
+        int filaUrg = vista.tablaUrgentes.getSelectedRow();
+        int filaOrd = vista.tablaOrdenadas.getSelectedRow();
+
+        if (filaPend == -1 && filaUrg == -1 && filaOrd == -1) {
+            JOptionPane.showMessageDialog(null, "Seleccione una tarea.");
+            return;
+        }
+
+        //PENDIENTES
+        if (filaPend != -1) {
+
+            Tarea t = obtenerTareaPendiente(filaPend);
+            if (t == null) return;
+
+            if (t.isUrgente()) {
+                try {
+                    Tarea primero = (Tarea) modelo.getTareasUrgentes().frenteCola();
+
+                    if (!t.getDescripcion().equalsIgnoreCase(primero.getDescripcion())) {
+                        JOptionPane.showMessageDialog(null,
+                                "Una tarea urgente solo puede completarse si es la PRIMERA en la cola (FIFO).");
+                        return;
+                    }
+
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(null, "No hay tareas urgentes en cola.");
+                    return;
+                }
+            }
+
+            modelo.completarTarea(t);
+            actualizarTablas();
+            return;
+        }
+
+        // URGENTES
+        if (filaUrg != -1) {
+            if (filaUrg != 0) {
+                JOptionPane.showMessageDialog(null, "Solo puedes completar la PRIMERA tarea urgente (FIFO).");
+                return;
+            }
+
+            try {
+                Tarea frente = (Tarea) modelo.getTareasUrgentes().frenteCola();
+                modelo.completarTarea(frente);
+                actualizarTablas();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, "Error al completar tarea urgente.");
+            }
+
+            return;
+        }
+
+        //ORDENADAS
+        if (filaOrd != -1) {
+
+            Tarea t = obtenerTareaDesdeOrdenadas(filaOrd);
+            if (t == null) return;
+
+            if (t.isUrgente()) {
+                try {
+                    Tarea primero = (Tarea) modelo.getTareasUrgentes().frenteCola();
+
+                    if (!t.getDescripcion().equalsIgnoreCase(primero.getDescripcion())) {
+                        JOptionPane.showMessageDialog(null,
+                                "Una tarea urgente solo puede completarse si es la PRIMERA en la cola (FIFO).");
+                        return;
+                    }
+
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(null, "No hay tareas urgentes en cola.");
+                    return;
+                }
+            }
+
+            modelo.completarTarea(t);
+            actualizarTablas();
+        }
+    }
+
+    // NUEVO  ELIMINAR 
+    private void eliminar() {
+
+        int filaPend = vista.tablaPendientes.getSelectedRow();
+        int filaUrg = vista.tablaUrgentes.getSelectedRow();
+        int filaOrd = vista.tablaOrdenadas.getSelectedRow();
+
+        if (filaPend == -1 && filaUrg == -1 && filaOrd == -1) {
+            JOptionPane.showMessageDialog(null, "Seleccione una tarea para eliminar.");
+            return;
+        }
+
+        //DESDE PENDIENTES
+        if (filaPend != -1) {
+
+            Tarea t = obtenerTareaPendiente(filaPend);
+            if (t == null) return;
+
+            // SI NO ES URGENTE ELIMINA DE MANERA NORMAL 
+            if (!t.isUrgente()) {
+                modelo.eliminarTarea(t);
+                actualizarTablas();
+                return;
+            }
+
+            // SI ES URGENTE SOLO ELIMINA SI ES LA PRIMERA 
+            try {
+                Tarea primero = (Tarea) modelo.getTareasUrgentes().frenteCola();
+
+                if (!t.getDescripcion().equalsIgnoreCase(primero.getDescripcion())) {
+                    JOptionPane.showMessageDialog(null,
+                            "Una tarea urgente solo puede eliminarse si es la PRIMERA en la cola (FIFO).");
+                    return;
+                }
+
+                modelo.eliminarTarea(t);
+                actualizarTablas();
+
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, "No hay tareas urgentes en cola.");
+            }
+
+            return;
+        }
+
+        //DESDE URGENTES 
+        if (filaUrg != -1) {
+            if (filaUrg != 0) {
+                JOptionPane.showMessageDialog(null,
+                        "Solo puedes eliminar la PRIMERA tarea urgente (FIFO).");
+                return;
+            }
+
+            try {
+                Tarea frente = (Tarea) modelo.getTareasUrgentes().frenteCola();
+                modelo.eliminarTarea(frente);
+                actualizarTablas();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, "Error al eliminar tarea urgente.");
+            }
+
+            return;
+        }
+
+        //DESDE ORDENADAS
+        if (filaOrd != -1) {
+
+            Tarea t = obtenerTareaDesdeOrdenadas(filaOrd);
+            if (t == null) return;
+
+            if (!t.isUrgente()) {
+                modelo.eliminarTarea(t);
+                actualizarTablas();
+                return;
+            }
+
+            try {
+                Tarea primero = (Tarea) modelo.getTareasUrgentes().frenteCola();
+
+                if (!t.getDescripcion().equalsIgnoreCase(primero.getDescripcion())) {
+                    JOptionPane.showMessageDialog(null,
+                            "Una tarea urgente solo puede eliminarse si es la PRIMERA en cola (FIFO).");
+                    return;
+                }
+
+                modelo.eliminarTarea(t);
+                actualizarTablas();
+
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, "No hay urgentes en cola.");
+            }
+        }
+    }
+
+    // DESHACER
+    private void deshacer() {
+        try {
+            modelo.deshacerUltimaCompletada();
+            actualizarTablas();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "No hay tareas para deshacer.");
+        }
+    }
+
+    private Tarea obtenerTareaPendiente(int fila) {
+        String desc = vista.tablaPendientes.getValueAt(fila, 0).toString();
+
+        for (Object o : modelo.getTareasPendientes().toList()) {
+            Tarea t = (Tarea) o;
+            if (t.getDescripcion().equalsIgnoreCase(desc))
+                return t;
+        }
+        return null;
+    }
+
+    private Tarea obtenerTareaDesdeOrdenadas(int fila) {
+        String desc = vista.tablaOrdenadas.getValueAt(fila, 0).toString();
+
+        for (Object o : modelo.getTareasPendientes().toList()) {
+            Tarea t = (Tarea) o;
+            if (t.getDescripcion().equalsIgnoreCase(desc))
+                return t;
+        }
+        return null;
+    }
+
+    // ACTUALIZAR TABLAS
+    private void actualizarTablas() {
+        actualizarPendientes();
+        actualizarOrdenadasVacía();
+        actualizarUrgentes();
+        actualizarCompletadas();
+    }
+
+    private void actualizarPendientes() {
+
+        DefaultTableModel modeloTabla =
+                (DefaultTableModel) vista.tablaPendientes.getModel();
+
+        modeloTabla.setRowCount(0);
+
+        for (Object o : modelo.getTareasPendientes().toList()) {
+            Tarea t = (Tarea) o;
+
+            modeloTabla.addRow(
+                    new Object[]{t.getDescripcion(), t.getCategoria(), t.getNotas(), t.getEstado()}
+            );
+        }
+    }
+
+    private void actualizarOrdenadasVacía() {
+        DefaultTableModel modeloTabla =
+                (DefaultTableModel) vista.tablaOrdenadas.getModel();
+        modeloTabla.setRowCount(0);
+    }
+
+    private void actualizarUrgentes() {
+
+        DefaultTableModel modeloTabla =
+                (DefaultTableModel) vista.tablaUrgentes.getModel();
+
+        modeloTabla.setRowCount(0);
+
+        try {
+            ColaLista cola = modelo.getTareasUrgentes();
+            ColaLista temp = new ColaLista();
+
+            while (!cola.colaVacia()) {
+
+                Tarea t = (Tarea) cola.quitar();
+
+                modeloTabla.addRow(new Object[]{
+                        t.getDescripcion(), t.getCategoria(), t.getNotas(), t.getEstado()
+                });
+
+                temp.insertar(t);
+            }
+
+            while (!temp.colaVacia())
+                cola.insertar(temp.quitar());
+
+        } catch (Exception ignored) {}
+    }
+
+    private void actualizarCompletadas() {
+
+        DefaultTableModel modeloTabla =
+                (DefaultTableModel) vista.tablaCompletadas.getModel();
+
+        modeloTabla.setRowCount(0);
+
+        try {
+
+            PilaLista pila = modelo.getTareasCompletadas();
+            PilaLista temp = new PilaLista();
+
+            while (!pila.pilaVacia()) {
+
+                Tarea t = (Tarea) pila.popPila();
+
+                modeloTabla.addRow(new Object[]{
+                        t.getDescripcion(), t.getCategoria(), t.getNotas(), t.getEstado()
+                });
+
+                temp.pushPila(t);
+            }
+
+            while (!temp.pilaVacia())
+                pila.pushPila(temp.popPila());
+
+        } catch (Exception ignored) {}
+    }
 }
